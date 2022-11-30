@@ -66,12 +66,18 @@ def bbox2points(bbox):
     From bounding box yolo format
     to corner points cv2 rectangle
     """
+    print('bbox2points: bbox: ' + str(bbox))
     x, y, w, h = bbox
-    xmin = int(round(x - (w / 2)))
-    xmax = int(round(x + (w / 2)))
-    ymin = int(round(y - (h / 2)))
-    ymax = int(round(y + (h / 2)))
-    return xmin, ymin, xmax, ymax
+    if any(math.isinf(c) for c in bbox):
+        return "Error", "Inf", 0, 0
+    elif any(math.isnan(c) for c in bbox):
+        return "Error", "NaN", 0, 0
+    else:
+        xmin = int(round(x - (w / 2)))
+        xmax = int(round(x + (w / 2)))
+        ymin = int(round(y - (h / 2)))
+        ymax = int(round(y + (h / 2)))
+        return xmin, ymin, xmax, ymax
 
 
 def class_colors(names):
@@ -119,9 +125,14 @@ def print_detections(detections, coordinates=False):
 def draw_boxes(detections, image, colors):
     import cv2
     for label, confidence, bbox in detections:
+        text = "{} [{:.2f}]".format(label, float(confidence))
         left, top, right, bottom = bbox2points(bbox)
-        cv2.rectangle(image, (left, top), (right, bottom), colors[label], 1)
-        cv2.putText(image, "{} [{:.2f}]".format(label, float(confidence)),
+        if (left == "Error"):
+            print("draw_boxes: bbox: " + str (bbox))
+            print("draw_boxes: " + text)
+        else:
+            cv2.rectangle(image, (left, top), (right, bottom), colors[label], 1)
+            cv2.putText(image, text,
                     (left, top - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                     colors[label], 2)
     return image
@@ -233,7 +244,7 @@ def detect_image(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45
 
 if os.name == "posix":
     cwd = os.path.dirname(__file__)
-    lib = CDLL(cwd + "/libdarknet.so", RTLD_GLOBAL)
+    lib = CDLL(cwd + "/build/libdarknet.so", RTLD_GLOBAL)
 elif os.name == "nt":
     cwd = os.path.dirname(__file__)
     os.environ['PATH'] = cwd + ';' + os.environ['PATH']
